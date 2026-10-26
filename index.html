@@ -1,344 +1,673 @@
 <!doctype html>
-<html>
+<html lang="en">
 
   <head>
     <meta charset="utf-8">
-    <title>Hardwon Not Done</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hardwon Not Done: Women in the Iowa Legislature by County, 1929–2023</title>
+    <meta name="description" content="Interactive map showing the running total of women who have served in the Iowa House and Iowa Senate, by county, from 1929 to 2023.">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI=" crossorigin=""/>
     <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style type="text/css">
 
-      h3 {
-        font-size: 14px;
-        font-family: 'Roboto', sans-serif;
-        padding-top: 5px;
+      :root {
+        --text: #1a1a1a;
+        --text-muted: #4a4a4a;      /* 8.9:1 on white */
+        --border: #595959;          /* 7:1 on white */
+        --focus: #0b57d0;           /* 6.6:1 on white */
+        --panel-bg: #ffffff;
+        --font-body: 'Roboto', Arial, Helvetica, sans-serif;
+        --font-head: 'Work Sans', Arial, Helvetica, sans-serif;
       }
 
-      medium {
-        font-size: 18px;
-        font-family: 'Work Sans', sans-serif;
-      }
-
-      small {
-        font-size: 14px;
-        font-family: 'Roboto', sans-serif;
-      }
-
-      smaller {
-        font-size: 12px;
-        font-family: 'Roboto', sans-serif;
-      }
-
-      body {
-        margin: 0px;
+      html, body {
+        margin: 0;
         height: 100%;
         width: 100%;
+        font-family: var(--font-body);
+        color: var(--text);
+      }
+
+      /* Visually hidden, but available to screen readers */
+      .sr-only {
+        position: absolute !important;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      /* Visible keyboard focus everywhere */
+      a:focus-visible,
+      button:focus-visible,
+      input:focus-visible,
+      summary:focus-visible,
+      [tabindex]:focus-visible,
+      .leaflet-container:focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 2px;
       }
 
       #map {
         position: fixed;
-        top: 0px;
-        bottom: 0px;
+        top: 0;
+        bottom: 0;
         width: 100%;
         background: white;
       }
 
-      /* style the slider-control div */
-      #slider-control {
+      /* Shared floating panel look */
+      .panel {
         position: fixed;
+        z-index: 1000;
+        background: var(--panel-bg);
+        color: var(--text);
+        border-radius: 4px;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+        padding: 8px 12px;
+        font-size: 0.9375rem;      /* 15px */
+        line-height: 1.4;
+        box-sizing: border-box;
+      }
+
+      /* Chamber switch (replaces Leaflet's layer control, top right) */
+      #chamber {
+        top: 10px;
+        right: 10px;
+        margin: 0;
+        border: 0;
+        font-weight: 700;
+      }
+
+      #chamber legend {
+        padding: 0;
+        font-weight: 700;
+      }
+
+      #chamber label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 32px;
+        cursor: pointer;
+      }
+
+      #chamber input {
+        width: 20px;
+        height: 20px;
+        margin: 0;
+        accent-color: var(--focus);
+      }
+
+      /* Year slider + data table button (bottom left) */
+      #controls {
         bottom: 10px;
         left: 10px;
-        width: 30%;
-        height: 25px;
-        z-index: 700;
+        width: 340px;
+        max-width: calc(100% - 20px);
       }
 
-      /* Set time slider styles */
-      #slider {
-        box-shadow: 0px 0px 0px 1px rgba(0, 0, 0, 0.3);
-        position: absolute;
-        height: 100%;
-        bottom: 0px;
-        left: 125px;
-        z-index: 1000;
-        background-color: #FFFFFF;
-        border-radius: 3px;
+      #controls label {
+        display: block;
+        font-family: var(--font-head);
+        font-size: 1.125rem;
+        margin-bottom: 4px;
       }
 
-      /* Set temporal legend styles */
-      #temporal {
-        position: absolute;
-        height: 100%;
-        bottom: 0px;
-        width: 86px;
-        z-index: 1000;
-        background-color: #FFFFFF;
-        border-radius: 3px;
-        box-shadow: 0px 0px 0px 1px rgba(0, 0, 0, 0.3);
+      #year-slider {
+        display: block;
+        width: 100%;
+        height: 32px;
+        margin: 0 0 8px;
+        accent-color: var(--focus);
+        cursor: pointer;
       }
 
-      /* Set the styles for the text span in the temporal legend */
-      #temporal span {
-        font-family: 'Montserrat', sans-serif;
-        position: absolute;
-        font-size: 13px;
-        bottom: 4px;
-        left: 10px;
+      button {
+        font: inherit;
+        color: #fff;
+        background: var(--focus);
+        border: 2px solid var(--focus);
+        border-radius: 4px;
+        padding: 8px 14px;
+        min-height: 44px;
+        cursor: pointer;
       }
 
-      .legend {
-        background-color: #fff;
-        border-radius: 3px;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.10);
-        padding: 10px;
-        z-index: 1;
-        font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
-        line-height: 18px;
-        color: #555;
+      button:hover { background: #083d91; border-color: #083d91; }
+      button:disabled { background: #595959; border-color: #595959; cursor: not-allowed; }
+
+      /* Legend (bottom right, above the map attribution) */
+      #legend {
+        right: 10px;
+        bottom: 32px;
+        max-height: 60vh;
+        overflow-y: auto;
+        max-width: calc(100% - 20px);
       }
 
-      .legend i {
-        width: 50px;
+      #legend summary {
+        font-weight: 700;
+        cursor: pointer;
+        min-height: 24px;
+      }
+
+      #legend ul {
+        list-style: none;
+        margin: 8px 0 0;
+        padding: 0;
+      }
+
+      #legend li {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 22px;
+      }
+
+      .swatch {
+        position: relative;
+        flex: none;
+        width: 44px;
         height: 18px;
-        float: left;
-        margin-right: 25px;
+        border: 1px solid var(--border);
+        background: #fff;
+      }
+
+      .swatch span {
+        position: absolute;
+        inset: 0;
         opacity: 0.7;
       }
 
-      .leaflet-control-layers-expanded {
-        font-size: 14px;
-        font-family: 'Roboto', sans-serif;
-        font-weight: bold;
+      /* Error banner */
+      #load-error {
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #fff4f4;
+        border: 2px solid #a30000;
+        color: #6b0000;
+        font-weight: 700;
+        max-width: calc(100% - 20px);
       }
 
+      #load-error[hidden] { display: none; }
+
+      /* Popups */
       .leaflet-popup-content {
-        min-width: 333px;
+        min-width: min(333px, 65vw);
         max-height: 333px;
-        overflow-y: scroll;
+        overflow-y: auto;
+        font-family: var(--font-body);
+        color: var(--text);
+      }
+
+      .leaflet-popup-content:focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 2px;
+      }
+
+      .leaflet-popup-content .popup-title {
+        font-family: var(--font-head);
+        font-size: 1.125rem;
+        font-weight: 700;
+        margin: 0 0 12px;
+      }
+
+      .leaflet-popup-content .popup-count {
+        font-size: 0.9375rem;
+        margin: 0 0 12px;
+      }
+
+      .leaflet-popup-content .popup-names {
+        font-size: 0.875rem;
+        margin: 0;
+      }
+
+      /* Attribution link contrast */
+      .leaflet-container .leaflet-control-attribution a { color: #00507a; }
+
+      /* Data table dialog */
+      dialog#data-dialog {
+        width: min(900px, 95vw);
+        max-height: 85vh;
+        padding: 16px;
+        border: 2px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        font-size: 0.9375rem;
+      }
+
+      dialog#data-dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
+
+      .dialog-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      .dialog-head h2 {
+        font-family: var(--font-head);
+        font-size: 1.25rem;
+        margin: 0;
+      }
+
+      .table-wrap {
+        max-height: 60vh;
+        overflow: auto;
+      }
+
+      table { border-collapse: collapse; width: 100%; }
+
+      th, td {
+        text-align: left;
+        vertical-align: top;
+        padding: 8px 10px;
+        border: 1px solid #8a8a8a;
+      }
+
+      thead th {
+        position: sticky;
+        top: 0;
+        background: #e8e8e8;
+      }
+
+      tbody th { font-weight: 700; background: #f6f6f6; }
+
+      .noscript {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        z-index: 2000;
+        background: #fff;
+        padding: 12px;
+        border: 2px solid #a30000;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+
+      /* Windows High Contrast / forced colors */
+      @media (forced-colors: active) {
+        .panel { border: 1px solid CanvasText; }
+        .swatch { forced-color-adjust: none; }
       }
 
     </style>
   </head>
 
   <body>
-    <div id="map"></div>
-    <!-- ui slider -->
-    <div id="slider-control">
-      <div id="slider" class="leaflet-control">
-        <!-- Use the first and last year of the time data as the min and max. Set the initial value as the first year. Set the steps at one year. -->
-        <input type="range" min="1929" max="2023" value="1929" step="2" class="slider" />
+    <main id="main">
+      <h1 class="sr-only">Hardwon Not Done: Women in the Iowa Legislature by County, 1929–2023</h1>
+
+      <p id="map-help" class="sr-only">
+        This interactive map shows the running total of women who have served in the Iowa House or Iowa Senate from each county.
+        Choose a chamber and a year with the controls. Each county on the map can be reached with the Tab key; press Enter to open its details and Escape to close them.
+        For a text version of the same information, use the View data as table button.
+      </p>
+
+      <!-- Chamber selector -->
+      <fieldset id="chamber" class="panel">
+        <legend>Chamber</legend>
+        <label><input type="radio" name="chamber" value="house" checked> Iowa House</label>
+        <label><input type="radio" name="chamber" value="senate"> Iowa Senate</label>
+      </fieldset>
+
+      <!-- Year slider and table button -->
+      <section id="controls" class="panel" aria-label="Map controls">
+        <label for="year-slider">Year: <output id="year-output" for="year-slider">1929</output></label>
+        <!-- First and last year of the time data as min and max; steps of two years. -->
+        <input type="range" id="year-slider" min="1929" max="2023" value="1929" step="2" aria-describedby="slider-help">
+        <p id="slider-help" class="sr-only">Use the left and right arrow keys to change the year in two-year steps. Home and End jump to the first and last year.</p>
+        <button type="button" id="data-open" aria-haspopup="dialog">View data as table</button>
+      </section>
+
+      <!-- Legend -->
+      <details id="legend" class="panel">
+        <summary>Legend: <span id="legend-title">Total House representatives</span></summary>
+        <ul id="legend-list"></ul>
+      </details>
+
+      <div id="load-error" class="panel" role="alert" hidden>
+        The map data could not be loaded. Please check your connection and reload the page.
       </div>
-      <!-- temporal legend -->
-      <div id='temporal'>
-        <h3 class='txt-bold'><span></span></h3>
+
+      <!-- Polite announcements for screen readers -->
+      <div id="status" class="sr-only" role="status" aria-live="polite"></div>
+
+      <div id="map"></div>
+    </main>
+
+    <!-- Text alternative to the map -->
+    <dialog id="data-dialog" aria-labelledby="dialog-title">
+      <div class="dialog-head">
+        <h2 id="dialog-title">Data table</h2>
+        <button type="button" id="data-close">Close</button>
       </div>
-    </div>
+      <div class="table-wrap" tabindex="0" role="region" aria-labelledby="dialog-title">
+        <table>
+          <caption class="sr-only" id="table-caption"></caption>
+          <thead>
+            <tr>
+              <th scope="col">County</th>
+              <th scope="col">Total</th>
+              <th scope="col">Representatives</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </dialog>
+
+    <noscript>
+      <p class="noscript">This map needs JavaScript to display. Without it, the county data for the Iowa House and Iowa Senate is not available on this page.</p>
+    </noscript>
 
     <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js" integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM=" crossorigin=""></script>
     <script src="https://code.jquery.com/jquery-3.6.3.min.js" integrity="sha256-pvPw+upLPUjgMXY0G+8O0xUf+/Im1MZjXxxgOcBQBXU=" crossorigin="anonymous"></script>
-    <!--<script src="https://d3js.org/d3.v7.min.js"></script>-->
     <script type="text/javascript">
-      // define the map
-      const map = L.map('map').setView([42.0, -93.0], 7);
-      // add a basemap
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 12,
-        minZoom: 1,
-      }).addTo(map);
-      // Add a function to style the counties by their count of female house members
-      function getColor(d) {
-        return d > 13.00 ? '#4b4453' :
-          d > 9.00 ? '#845ec2' :
-          d > 5.00 ? '#d65db1' :
-          d > 3.00 ? '#ff6f91' :
-          d > 2.00 ? '#ff9671' :
-          d > 1.00 ? '#ffc75f' :
-          d > 0.00 ? '#f9f871' :
-          '#1C00ff00';
-      }
-      // Add a function to style the counties by their count of female senate members
-      function getColorSenate(d) {
-        return d > 5.00 ? '#d65db1' :
-          d > 3.00 ? '#ff6f91' :
-          d > 2.00 ? '#ff9671' :
-          d > 1.00 ? '#ffc75f' :
-          d > 0.00 ? '#f9f871' :
-          '#1C00ff00';
-      }
-      // Use jquery to load the data
-      $.when(
-        $.getJSON('data/House_Women_Cumulative.geojson'), // the running total of women in the Iowa House layer
-        $.getJSON('data/Senate_Women_Cumulative.geojson') // the running total of women in the Iowa Senate layer
-        // When the files are done loading,
-        // identify them with names and process them through a function
-      ).done(function(houseCounties,senateCounties) {
-        // give the layer some default properties
-        const houseWomen = L.geoJson(houseCounties, {
-          style: function(feature) {
-            return {
-              stroke: 1,
-              color: 'grey',
-              strokeOpacity: 1.0,
-              weight: 1.0,
-              fillOpacity: 0.7
-            }
-          },
-        }).addTo(map); // add house layer to the map
-        // give the layer some default properties
-        const senateWomen = L.geoJson(senateCounties, {
-          style: function(feature) {
-            return {
-              stroke: 1,
-              color: 'grey',
-              strokeOpacity: 1.0,
-              weight: 1.0,
-              fillOpacity: 0.7
-            }
-          }
-        });
-        // define currentYear as the dynamic slider entry
-        const currentYear = $('.slider').val();
+      (function() {
+        'use strict';
 
-        sequenceUI(houseWomen, senateWomen); // calls the function to make the time slider
-        createTemporalLegend(currentYear); // produces temporal legend upon map loading
-        updateCounties(houseWomen, senateWomen, currentYear); // calls the function that updates the counties choropleth
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-        // define layers
-        const baselayers = {
-          "Iowa House": houseWomen,
-          "Iowa Senate": senateWomen,
-        };
-        // send the layer to the layer control
-        L.control.layers(baselayers, null, {
-          collapsed: false,
+        // ---------- Map ----------
+        const map = L.map('map', {
+          zoomAnimation: !reducedMotion,
+          fadeAnimation: !reducedMotion,
+          markerZoomAnimation: !reducedMotion
+        }).setView([42.0, -93.0], 7);
+
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+          subdomains: 'abcd',
+          maxZoom: 12,
+          minZoom: 1,
         }).addTo(map);
-        const legend = L.control({
-          position: 'bottomright'
-        });
-        legend.onAdd = function(map) {
 
-          const div = L.DomUtil.create('div', 'info legend'),
-            grades = [0.00, 1.00, 2.00, 3.00, 5.00, 9.00, 13.00],
-            labels = ["<span style='font-size:14px; font-weight:bold;'>Total Representatives</span><br>"];
+        // Give the map container an accessible name and description
+        const mapEl = map.getContainer();
+        mapEl.setAttribute('role', 'region');
+        mapEl.setAttribute('aria-label', 'Map of Iowa counties');
+        mapEl.setAttribute('aria-describedby', 'map-help');
 
-          // loop through our density intervals and generate a label with a colored square for each interval
-          for (let i = 0; i < grades.length; i++) {
-            div.innerHTML +=
-              labels.push('<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
-                grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] : '+'));
+        // Move Leaflet's controls (zoom buttons, attribution) ahead of the county shapes
+        // in the DOM so keyboard users reach them before tabbing through 99 counties.
+        const controlContainer = mapEl.querySelector('.leaflet-control-container');
+        if (controlContainer) mapEl.insertBefore(controlContainer, mapEl.firstChild);
+
+        // ---------- Color scales ----------
+        // Style counties by their count of women in the Iowa House
+        function getColor(d) {
+          return d > 13.00 ? '#4b4453' :
+            d > 9.00 ? '#845ec2' :
+            d > 5.00 ? '#d65db1' :
+            d > 3.00 ? '#ff6f91' :
+            d > 2.00 ? '#ff9671' :
+            d > 1.00 ? '#ffc75f' :
+            d > 0.00 ? '#f9f871' :
+            '#1C00ff00';
+        }
+        // Style counties by their count of women in the Iowa Senate
+        function getColorSenate(d) {
+          return d > 5.00 ? '#d65db1' :
+            d > 3.00 ? '#ff6f91' :
+            d > 2.00 ? '#ff9671' :
+            d > 1.00 ? '#ffc75f' :
+            d > 0.00 ? '#f9f871' :
+            '#1C00ff00';
+        }
+
+        // Legend bins: [sample value used to look up the color, text label]
+        const CHAMBERS = {
+          house: {
+            name: 'Iowa House',
+            noun: 'House',
+            color: getColor,
+            bins: [[0, 'None'], [1, '1'], [2, '2'], [3, '3'], [4, '4–5'], [6, '6–9'], [10, '10–13'], [14, '14 or more']]
+          },
+          senate: {
+            name: 'Iowa Senate',
+            noun: 'Senate',
+            color: getColorSenate,
+            bins: [[0, 'None'], [1, '1'], [2, '2'], [3, '3'], [4, '4–5'], [6, '6 or more']]
           }
-          div.innerHTML = labels.join('<br>');
-          return div;
         };
 
-        legend.addTo(map);
-      });
-      // add a UI slider
-      function sequenceUI(houseWomen, senateWomen) {
-        // use the jQuery ajax method to get the slider element
-        $('.slider')
-          .on('input change', function() { // when the input changes...
-            let currentYear = $(this).val(); // identify the year selected with "currentYear"
-            createTemporalLegend(currentYear); // call the createTemporalLegend function
-            updateCounties(houseWomen, senateWomen, currentYear); // call the updateCounties function
-          });
-      }; // End sequenceUI function
-      // add a temporal legend in sync with the UI slider
-      function createTemporalLegend(currentYear) {
-        // change grade value to that currently selected by UI slider
-        $('#temporal span').html("Year: " + currentYear);
-      }; // end createTemporalLegend function
-      // update the counties based on count of representation
-      function updateCounties(houseWomen, senateWomen, currentYear) {
-        // iterate through each entry
-        houseWomen.eachLayer(function(layer) {
-          // define the properties
-          const props = layer.feature.properties;
-          // define and bind popup content
-          layer.bindPopup("<medium>" + props.COUNTY + " County, " + currentYear +"</medium><br><br>" +
-          "<small>Total House Representatives: " + props[currentYear + '_RUNNING'] + "</small><br><br>" +
-          "<smaller>" + props[currentYear + '_REPS_RUNNING'] + "</smaller>");
-          // set choropleth styles based on total reps
-          layer.setStyle({
-            fillColor: getColor(props[currentYear + '_RUNNING'])
-          });
-          // on the layer...
-          layer.on({
-            // if there is a mouseover...
-            mouseover: function(e) {
-              var layer = e.target;
-              // change the layer style
-              layer.setStyle({
-                fillColor: getColor(props[currentYear + '_RUNNING']),
-                stroke: 1,
-                color: 'grey',
-                strokeOpacity: 1.0,
-                weight: 3.0,
-                fillOpacity: 1.0
-              });
-            },
-            // if there is a mouseout...
-            mouseout: function(e) {
-              var layer = e.target;
-              // change the layer style
-              layer.setStyle({
-                fillColor: getColor(props[currentYear + '_RUNNING']),
-                stroke: 1,
-                color: 'grey',
-                strokeOpacity: 1.0,
-                weight: 1.0,
-                fillOpacity: 0.7
-              });
-            },
-          });
-        });
-        // iterate through each entry
-        senateWomen.eachLayer(function(layer) {
-          // define the properties
-          const props = layer.feature.properties
-          // define and bind popup content
-          layer.bindPopup("<medium>" + props.COUNTY + " County, " + currentYear +"</medium><br><br>" +
-          "<small>Total Senate Representatives: " + props[currentYear + '_RUNNING'] + "</small><br><br>" +
-          "<smaller>" + props[currentYear + '_REPS_RUNNING'] + "</smaller>");
-          // set choropleth styles based on total reps
-          layer.setStyle({
-            fillColor: getColorSenate(props[currentYear + '_RUNNING'])
-          });
-          // on the layer...
-          layer.on({
-            // if there is a mouseover...
-            mouseover: function(e) {
-              var layer = e.target;
-              // change the layer style
-              layer.setStyle({
-                fillColor: getColor(props[currentYear + '_RUNNING']),
-                stroke: 1,
-                color: 'grey',
-                strokeOpacity: 1.0,
-                weight: 3.0,
-                fillOpacity: 1.0
-              });
-            },
-            // if there is a mouseout...
-            mouseout: function(e) {
-              var layer = e.target;
-              // change the layer style
-              layer.setStyle({
-                fillColor: getColor(props[currentYear + '_RUNNING']),
-                stroke: 1,
-                color: 'grey',
-                strokeOpacity: 1.0,
-                weight: 1.0,
-                fillOpacity: 0.7
-              });
-            },
-          });
-        });
-      }; // end updateCounties() function
+        const state = {
+          chamber: 'house',
+          year: document.getElementById('year-slider').value
+        };
+        const layers = {};
 
+        // ---------- Helpers ----------
+        const BASE_STYLE = { stroke: true, color: '#595959', opacity: 1, weight: 1, fillOpacity: 0.7 };
+        const HOVER_STYLE = { color: '#595959', weight: 3, fillOpacity: 1 };
+        const FOCUS_STYLE = { color: '#0b57d0', weight: 4, fillOpacity: 1 };
+
+        function countFor(props) {
+          return Number(props[state.year + '_RUNNING']) || 0;
+        }
+        function repsFor(props) {
+          return props[state.year + '_REPS_RUNNING'] || '';
+        }
+        function plural(n) {
+          return n === 1 ? 'representative' : 'representatives';
+        }
+
+        // ---------- Announcements for screen readers ----------
+        const statusEl = document.getElementById('status');
+        let statusTimer;
+        function announce(msg) {
+          clearTimeout(statusTimer);
+          statusTimer = setTimeout(function() { statusEl.textContent = msg; }, 350);
+        }
+        function currentSummary() {
+          return 'Showing ' + CHAMBERS[state.chamber].name + ', year ' + state.year + '.';
+        }
+
+        // ---------- Keyboard support for county shapes ----------
+        let returnFocusTo = null;
+        let focusPopupOnOpen = false;
+
+        function applyStyle(layer, mode) {
+          const s = mode === 'focus' ? FOCUS_STYLE : mode === 'hover' ? HOVER_STYLE : BASE_STYLE;
+          layer.setStyle(s);
+        }
+
+        // Called each time a county shape is added to the map (its SVG element is new each time)
+        function decorate(layer, chamberKey) {
+          const el = layer.getElement && layer.getElement();
+          if (!el) return;
+          el.setAttribute('tabindex', '0');
+          el.setAttribute('role', 'button');
+          el.setAttribute('aria-haspopup', 'dialog');
+          labelShape(layer, chamberKey);
+
+          L.DomEvent.on(el, 'keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              returnFocusTo = layer;
+              focusPopupOnOpen = true;
+              layer.openPopup();
+            }
+          });
+          L.DomEvent.on(el, 'focus', function() {
+            layer._focused = true;
+            applyStyle(layer, 'focus');
+          });
+          L.DomEvent.on(el, 'blur', function() {
+            layer._focused = false;
+            applyStyle(layer, 'base');
+          });
+        }
+
+        function labelShape(layer, chamberKey) {
+          const el = layer.getElement && layer.getElement();
+          if (!el) return;
+          const p = layer.feature.properties;
+          const n = countFor(p);
+          el.setAttribute('aria-label',
+            p.COUNTY + ' County, ' + state.year + ': ' + n + ' ' + CHAMBERS[chamberKey].noun + ' ' + plural(n) + '. Press Enter for details.');
+        }
+
+        function popupHtml(chamberKey, props) {
+          const n = countFor(props);
+          return '<h2 class="popup-title" id="popup-title">' + props.COUNTY + ' County, ' + state.year + '</h2>' +
+            '<p class="popup-count">Total ' + CHAMBERS[chamberKey].noun + ' Representatives: ' + n + '</p>' +
+            '<p class="popup-names">' + repsFor(props) + '</p>';
+        }
+
+        function buildLayer(geojson, chamberKey) {
+          return L.geoJson(geojson, {
+            style: function() { return BASE_STYLE; },
+            onEachFeature: function(feature, layer) {
+              // Popup content is a function, so it always reflects the current year
+              layer.bindPopup(function() { return popupHtml(chamberKey, feature.properties); });
+              layer.on({
+                add: function() { decorate(layer, chamberKey); },
+                mouseover: function() { applyStyle(layer, layer._focused ? 'focus' : 'hover'); },
+                mouseout: function() { applyStyle(layer, layer._focused ? 'focus' : 'base'); }
+              });
+            }
+          });
+        }
+
+        // Popup focus management
+        map.on('popupopen', function(e) {
+          const el = e.popup.getElement();
+          if (!el) return;
+          el.setAttribute('role', 'dialog');
+          el.setAttribute('aria-labelledby', 'popup-title');
+          if (focusPopupOnOpen) {
+            focusPopupOnOpen = false;
+            const content = el.querySelector('.leaflet-popup-content');
+            if (content) {
+              content.setAttribute('tabindex', '-1');
+              content.focus({ preventScroll: true });
+            }
+          }
+        });
+        map.on('popupclose', function() {
+          if (returnFocusTo) {
+            const layer = returnFocusTo;
+            returnFocusTo = null;
+            const el = layer.getElement && layer.getElement();
+            if (el) el.focus();
+          }
+        });
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape' && !document.getElementById('data-dialog').open) map.closePopup();
+        });
+
+        // ---------- Legend ----------
+        function renderLegend() {
+          const c = CHAMBERS[state.chamber];
+          document.getElementById('legend-title').textContent = 'Total ' + c.noun + ' representatives';
+          document.getElementById('legend-list').innerHTML = c.bins.map(function(b) {
+            return '<li><span class="swatch" aria-hidden="true"><span style="background:' + c.color(b[0]) + '"></span></span>' + b[1] + '</li>';
+          }).join('');
+        }
+        // Start the legend collapsed on small screens so it does not cover the map
+        document.getElementById('legend').open = window.innerWidth >= 700;
+
+        // ---------- Update everything after a year or chamber change ----------
+        function update() {
+          document.getElementById('year-output').textContent = state.year;
+          Object.keys(layers).forEach(function(key) {
+            const colorFn = CHAMBERS[key].color;
+            layers[key].eachLayer(function(layer) {
+              layer.setStyle({ fillColor: colorFn(countFor(layer.feature.properties)) });
+              if (map.hasLayer(layers[key])) {
+                labelShape(layer, key);
+                if (layer.isPopupOpen()) layer.getPopup().update();
+              }
+            });
+          });
+          renderLegend();
+          announce(currentSummary());
+        }
+
+        // ---------- Controls ----------
+        const slider = document.getElementById('year-slider');
+        slider.addEventListener('input', function() {
+          state.year = slider.value;
+          update();
+        });
+
+        document.querySelectorAll('input[name="chamber"]').forEach(function(radio) {
+          radio.addEventListener('change', function() {
+            if (!radio.checked || !layers[radio.value]) return;
+            map.closePopup();
+            map.removeLayer(layers[state.chamber]);
+            state.chamber = radio.value;
+            layers[state.chamber].addTo(map);
+            update();
+          });
+        });
+
+        // ---------- Text alternative (data table) ----------
+        const dialog = document.getElementById('data-dialog');
+        const openBtn = document.getElementById('data-open');
+        openBtn.disabled = true;
+
+        openBtn.addEventListener('click', function() {
+          const c = CHAMBERS[state.chamber];
+          const heading = 'Women in the ' + c.name + ' by county, ' + state.year + ' (running total)';
+          document.getElementById('dialog-title').textContent = heading;
+          document.getElementById('table-caption').textContent = heading;
+
+          const rows = layers[state.chamber].getLayers()
+            .map(function(l) { return l.feature.properties; })
+            .sort(function(a, b) { return String(a.COUNTY).localeCompare(String(b.COUNTY)); });
+
+          const tbody = document.getElementById('table-body');
+          tbody.innerHTML = '';
+          rows.forEach(function(p) {
+            const tr = document.createElement('tr');
+            const th = document.createElement('th');
+            th.scope = 'row';
+            th.textContent = p.COUNTY + ' County';
+            const tdCount = document.createElement('td');
+            tdCount.textContent = countFor(p);
+            const tdNames = document.createElement('td');
+            tdNames.innerHTML = repsFor(p) || 'None';
+            tr.appendChild(th);
+            tr.appendChild(tdCount);
+            tr.appendChild(tdNames);
+            tbody.appendChild(tr);
+          });
+          dialog.showModal();
+        });
+        document.getElementById('data-close').addEventListener('click', function() { dialog.close(); });
+
+        // ---------- Load data ----------
+        $.when(
+          $.getJSON('data/House_Women_Cumulative.geojson'),  // running total of women in the Iowa House
+          $.getJSON('data/Senate_Women_Cumulative.geojson')  // running total of women in the Iowa Senate
+        ).done(function(houseResult, senateResult) {
+          layers.house = buildLayer(houseResult[0], 'house');
+          layers.senate = buildLayer(senateResult[0], 'senate');
+          layers.house.addTo(map);
+          openBtn.disabled = false;
+          update();
+        }).fail(function() {
+          document.getElementById('load-error').hidden = false;
+        });
+      })();
     </script>
   </body>
 
